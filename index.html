@@ -475,6 +475,30 @@
 <script>
 let currentLevel = 2;
 
+// ===== ログ送信設定 =====
+const LOG_ENDPOINT =
+  'https://script.google.com/macros/s/AKfycbzNTsvMJAuQ6QKtPBEJlKTvczcCwm6zb7PA1HC0lJ2oCH7R4lRkWyJnTLPCi9y58Bo/exec';
+
+async function sendLog(beforeText, afterText, level) {
+  try {
+    fetch(LOG_ENDPOINT, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        timestamp: new Date().toISOString(),
+        beforeText,
+        afterText,
+        level
+      })
+    });
+  } catch (e) {
+    console.error('ログ送信失敗', e);
+  }
+}
+
 function selectLevel(n) {
   currentLevel = n;
   document.querySelectorAll('.level-btn').forEach(btn => {
@@ -846,6 +870,12 @@ async function convert() {
 
   try {
     const result = await applyConversion(input, currentLevel);
+
+sendLog(
+  input,
+  result,
+  currentLevel
+);
 
     document.getElementById('beforeText').textContent = input;
     document.getElementById('afterText').textContent = result;
