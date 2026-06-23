@@ -2,6 +2,21 @@ const Anthropic = require("@anthropic-ai/sdk");
 
 const client = new Anthropic();
 
+const SEASON_HINTS = {
+  1: "睦月、初春の凜とした空気",
+  2: "如月、まだ冷たい余寒の頃",
+  3: "弥生、うぐいすが初音を聞かせる頃",
+  4: "卯月、花吹雪の季節",
+  5: "皐月、新緑と薫風の季節",
+  6: "水無月、梅雨の合間の晴れ間",
+  7: "文月、夕立とひぐらしの季節",
+  8: "葉月、蝉しぐれと盛夏",
+  9: "長月、虫の音と名月の頃",
+  10: "神無月、紅葉と澄んだ空気",
+  11: "霜月、木枯らしの季節",
+  12: "師走、年の瀬の静けさ",
+};
+
 const LEVEL_PROMPTS = {
   1: {
     name: "たしなみ程度",
@@ -48,6 +63,8 @@ exports.handler = async (event) => {
   }
 
   const { instruction } = LEVEL_PROMPTS[level];
+  const month = new Date().getMonth() + 1;
+  const seasonHint = SEASON_HINTS[month] || SEASON_HINTS[6];
 
   try {
     const response = await client.messages.create({
@@ -57,6 +74,9 @@ exports.handler = async (event) => {
         "あなたは「お嬢様翻訳協会」の専属翻訳官です。利用者が入力した荒ぶる感情(怒り・苛立ち・悪態など)を、お嬢様言葉に変換します。" +
         "ポイントは『上品な言葉にする』ことではなく『怒りをどれだけ優雅に隠せるか』です。怒りの内容・対象・強度は変換後も失わず、語尾や言葉選びだけを気品ある表現に変えてください。" +
         instruction +
+        ` 今の季節は${seasonHint}です。毎回ではなく、たまに(3〜4回に1回程度)、この季節感を絡めた情景や比喩を一言添えると効果的です。` +
+        '例えば「まあ！あのお方はなぜあれほど、朝からご機嫌がよろしくないのかしら。こんなに風が気持ちいい、梅雨の合間の晴れなのに」のように、季節の心地よさと相手の不機嫌さを対比させる構成も良いでしょう。' +
+        "季節要素を入れない回も多めに作り、毎回同じパターンにならないよう変化をつけてください。" +
         " 出力は変換後の一文(または短い文章)のみを返し、説明や前置きは一切つけないでください。",
       messages: [{ role: "user", content: text }],
     });
