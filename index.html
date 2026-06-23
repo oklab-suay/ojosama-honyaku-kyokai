@@ -475,6 +475,22 @@
 <script>
 let currentLevel = 2;
 
+const LOG_ENDPOINT =
+  'GASのWebアプリURL';
+
+async function checkMaintenance() {
+  try {
+    const res = await fetch(LOG_ENDPOINT);
+    const data = await res.json();
+
+    return data.isMaintenance === true;
+
+  } catch (e) {
+    console.error('利用回数チェック失敗', e);
+    return false;
+  }
+}
+
 // ===== ログ送信設定 =====
 const LOG_ENDPOINT =
   'https://script.google.com/macros/s/AKfycbzNTsvMJAuQ6QKtPBEJlKTvczcCwm6zb7PA1HC0lJ2oCH7R4lRkWyJnTLPCi9y58Bo/exec';
@@ -504,6 +520,33 @@ function selectLevel(n) {
   document.querySelectorAll('.level-btn').forEach(btn => {
     btn.classList.toggle('active', parseInt(btn.dataset.level) === n);
   });
+}
+
+
+const LOG_ENDPOINT = 'GASのURL';
+
+async function checkMaintenance() {
+  ...
+}
+
+async function sendLog(beforeText, afterText, level) {
+  try {
+    fetch(LOG_ENDPOINT, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        timestamp: new Date().toISOString(),
+        beforeText,
+        afterText,
+        level
+      })
+    });
+  } catch (e) {
+    console.error('ログ送信失敗', e);
+  }
 }
 
 // ===== 変換ロジック（サーバーAPI呼び出し） =====
@@ -862,6 +905,13 @@ async function convert() {
   const input = document.getElementById('inputText').value.trim();
   if (!input) return;
 
+const isMaintenance = await checkMaintenance();
+
+if (isMaintenance) {
+  showMaintenance();
+  return;
+}
+
   const loading = document.getElementById('loading');
   const output = document.getElementById('output');
 
@@ -870,6 +920,8 @@ async function convert() {
 
   try {
     const result = await applyConversion(input, currentLevel);
+
+sendLog(input, result, currentLevel);
 
 sendLog(
   input,
@@ -898,6 +950,72 @@ sendLog(
     alert('変換に失敗しましたわ。少し経ってからお試しくださいませ。');
     console.error(err);
   }
+}
+
+
+function showMaintenance() {
+  const inputSection =
+    document.querySelector('.input-section');
+
+  const output =
+    document.getElementById('output');
+
+  const loading =
+    document.getElementById('loading');
+
+  loading.classList.remove('visible');
+
+  inputSection.style.opacity = '0.35';
+  inputSection.style.pointerEvents = 'none';
+  inputSection.style.filter = 'grayscale(1)';
+
+  output.innerHTML = `
+    <div style="
+      background: linear-gradient(160deg, #4A1028 0%, #6B1F3E 100%);
+      border: 1px solid #B8974A;
+      color: #F5EFE6;
+      padding: 32px 24px;
+      text-align: center;
+      border-radius: 2px;
+      box-shadow: 0 12px 30px rgba(74,16,40,0.18);
+    ">
+      <div style="
+        font-family: 'Cormorant Garamond', serif;
+        letter-spacing: 0.35em;
+        color: #D4B06A;
+        font-size: 11px;
+        text-transform: uppercase;
+        margin-bottom: 18px;
+      ">
+        Parole di Dama
+      </div>
+
+      <div style="
+        width: 48px;
+        height: 1px;
+        background: #B8974A;
+        margin: 0 auto 22px;
+      "></div>
+
+      <p style="
+        font-size: 14px;
+        line-height: 2.1;
+        font-weight: 300;
+      ">
+        ただいま当家の者どもが総出でお支度を整えておりますの。<br>
+        （ただいまメンテナンス中でございます）<br><br>
+        誠に恐れ入りますが、紅茶でもお召し上がりになりながら、<br>
+        今しばらくお待ちくださいませ。<br><br>
+        またのお越しを心よりお待ち申し上げておりますわ。
+      </p>
+    </div>
+  `;
+
+  output.classList.add('visible');
+  output.scrollIntoView({
+    behavior: 'smooth',
+    block: 'nearest'
+  });
 }
 
 function copyResult() {
