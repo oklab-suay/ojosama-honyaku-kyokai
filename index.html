@@ -532,25 +532,21 @@
 <script>
 let currentLevel = 2;
 
+// ===== GASログ送信・メンテナンス確認設定 =====
+// GAS側で doGet() と doPost() の両方を用意している前提です。
 const LOG_ENDPOINT =
-  'GASのWebアプリURL';
+  'https://script.google.com/macros/s/AKfycbzNTsvMJAuQ6QKtPBEJlKTvczcCwm6zb7PA1HC0lJ2oCH7R4lRkWyJnTLPCi9y58Bo/exec';
 
 async function checkMaintenance() {
   try {
     const res = await fetch(LOG_ENDPOINT);
     const data = await res.json();
-
     return data.isMaintenance === true;
-
   } catch (e) {
     console.error('利用回数チェック失敗', e);
     return false;
   }
 }
-
-// ===== ログ送信設定 =====
-const LOG_ENDPOINT =
-  'https://script.google.com/macros/s/AKfycbzNTsvMJAuQ6QKtPBEJlKTvczcCwm6zb7PA1HC0lJ2oCH7R4lRkWyJnTLPCi9y58Bo/exec';
 
 async function sendLog(beforeText, afterText, level) {
   try {
@@ -572,6 +568,7 @@ async function sendLog(beforeText, afterText, level) {
   }
 }
 
+// ===== レベル選択 =====
 function selectLevel(n) {
   currentLevel = n;
   document.querySelectorAll('.level-btn').forEach(btn => {
@@ -579,395 +576,26 @@ function selectLevel(n) {
   });
 }
 
-
-const LOG_ENDPOINT = 'GASのURL';
-
-async function checkMaintenance() {
-  ...
-}
-
-async function sendLog(beforeText, afterText, level) {
-  try {
-    fetch(LOG_ENDPOINT, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        timestamp: new Date().toISOString(),
-        beforeText,
-        afterText,
-        level
-      })
-    });
-  } catch (e) {
-    console.error('ログ送信失敗', e);
-  }
-}
-
-// ===== 変換ロジック（サーバーAPI呼び出し） =====
-
+// ===== 変換ロジック（Netlify Functions呼び出し） =====
 async function applyConversion(text, level) {
   const res = await fetch('/.netlify/functions/convert', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, level }),
   });
+
   if (!res.ok) {
     throw new Error('変換に失敗しましたわ');
   }
+
   const data = await res.json();
   return data.result;
 }
 
-// ===== 旧・辞書ベース変換ロジック（未使用・保管用） =====
-/*
-// 一人称
-const firstPerson = [
-  [/\b(私|わたし|あたし|うち|自分)\b/g, 'わたくし'],
-  [/\b(俺|おれ|ぼく|僕)\b/g, 'わたくし'],
-];
-
-// 語彙置換テーブル（全レベル共通ベース）
-const wordMap = [
-  // 感情・状態
-  ['むかつく', 'いささか不愉快な気持ちになりますわ'],
-  ['イライラ', '心が乱れる'],
-  ['ムカムカ', '心中穏やかではない'],
-  ['怒る', '憤りを覚える'],
-  ['怒った', '憤りを覚えました'],
-  ['腹が立つ', '気分が優れませんわ'],
-  ['腹立つ', '気分が優れませんわ'],
-  ['疲れた', '疲労を感じておりますわ'],
-  ['しんどい', '身体が優れませんわ'],
-  ['つらい', '心苦しゅうございますわ'],
-  ['悲しい', '悲しゅうございますわ'],
-  ['嬉しい', '嬉しゅうございますわ'],
-  ['楽しい', '楽しゅうございますわ'],
-  ['苦しい', '苦しゅうございますわ'],
-  ['やばい', 'ただごとではございませんわ'],
-  ['すごい', '素晴らしゅうございますわ'],
-  ['かわいい', '愛らしゅうございますわ'],
-  ['きれい', '美しゅうございますわ'],
-  ['うれしい', '嬉しゅうございますわ'],
-  ['うまい', '美味しゅうございますわ'],
-  ['まずい', '口に合いませんわ'],
-  ['ひどい', 'あまりにも無礼なことで'],
-  ['最悪', '言葉に尽くしがたい不快さでございます'],
-  ['最高', '至上の喜びでございますわ'],
-  ['だるい', '億劫に感じておりますわ'],
-  ['眠い', '睡魔に誘われておりますわ'],
-  ['寒い', '寒さが身に染みますわ'],
-  ['暑い', '暑さが堪えますわ'],
-
-  // 動詞
-  ['食べる', 'いただく'],
-  ['食べた', 'いただきました'],
-  ['飲む', '召し上がる'],
-  ['飲んだ', '召し上がりました'],
-  ['行く', '参ります'],
-  ['行った', '参りました'],
-  ['来る', 'いらっしゃる'],
-  ['来た', 'いらっしゃいました'],
-  ['する', 'いたします'],
-  ['した', 'いたしました'],
-  ['見る', '拝見する'],
-  ['見た', '拝見いたしました'],
-  ['言う', '申し上げる'],
-  ['言った', '申し上げました'],
-  ['思う', '存じます'],
-  ['思った', '存じました'],
-  ['知る', '存じ上げる'],
-  ['知った', '存じ上げました'],
-  ['もらう', 'いただく'],
-  ['もらった', 'いただきました'],
-  ['あげる', '差し上げる'],
-  ['あげた', '差し上げました'],
-  ['できる', 'できますわ'],
-  ['できない', 'かないませんわ'],
-  ['わかった', '承知いたしましたわ'],
-  ['わかる', '承知いたします'],
-  ['やめる', '止めにいたします'],
-  ['やめた', '止めにいたしました'],
-  ['やる', 'いたします'],
-  ['やった', 'いたしました'],
-  ['やめたい', '止めにしたゅうございますわ'],
-  ['諦める', '諦めますわ'],
-  ['頑張る', '精進いたします'],
-  ['頑張った', '精進いたしました'],
-
-  // 名詞・日常語
-  ['お金', 'お金'],
-  ['仕事', 'お仕事'],
-  ['家', 'お宅'],
-  ['友達', '友人'],
-  ['彼氏', 'お相手の方'],
-  ['彼女', 'お相手の方'],
-  ['上司', '上の方'],
-  ['会社', '勤め先'],
-  ['電車', '電車'],
-  ['ご飯', 'お食事'],
-  ['ごはん', 'お食事'],
-
-  // 接続詞・副詞
-  ['でも', 'けれども'],
-  ['だから', 'それゆえ'],
-  ['だって', 'ですが'],
-  ['全部', 'すべて'],
-  ['もう', 'もはや'],
-  ['ちょっと', 'いささか'],
-  ['すごく', 'たいそう'],
-  ['めっちゃ', 'たいへん'],
-  ['なんか', 'なにやら'],
-  ['なんで', 'なぜ'],
-  ['なんだろう', 'いかなることでしょう'],
-  ['絶対', 'きっと'],
-  ['たぶん', 'おそらく'],
-  ['もしかして', 'もしかすると'],
-  ['全然', 'まったく'],
-  ['ほんと', '本当に'],
-  ['ほんとに', '本当に'],
-  ['ちゃんと', 'きちんと'],
-  ['ちゃんとした', 'きちんとした'],
-  ['ちゃんとしている', 'きちんとしておりますわ'],
-
-  // 否定系
-  ['ない', 'ございません'],
-  ['いない', 'おりません'],
-  ['じゃない', 'ではございません'],
-];
-
-// 語尾変換テーブル（レベル別）
-const endingRules = {
-  1: [
-    [/だよ$/,       'ですわ'],
-    [/だよね$/,     'ですわね'],
-    [/だね$/,       'ですわね'],
-    [/だ$/,         'ですわ'],
-    [/じゃん$/,     'ではありませんこと'],
-    [/ね$/,         'ですわね'],
-    [/よ$/,         'ですわよ'],
-    [/かな$/,       'かしら'],
-    [/かな？$/,     'かしら'],
-  ],
-  2: [
-    [/だよ$/,       'でございますわ'],
-    [/だよね$/,     'でございますわね'],
-    [/だね$/,       'でございますわね'],
-    [/だ$/,         'でございますわ'],
-    [/じゃん$/,     'ではございませんこと'],
-    [/ね$/,         'でございますわね'],
-    [/よ$/,         'でございますわよ'],
-    [/かな$/,       'かしら'],
-    [/かな？$/,     'かしら'],
-    [/でしょ$/,     'でございましょう'],
-    [/でしょ？$/,   'でございましょうか'],
-    [/だろう$/,     'でございましょう'],
-    [/だろうな$/,   'でございましょうね'],
-  ],
-  3: [
-    [/だよ$/,       'でございますわよ'],
-    [/だよね$/,     'でございますわね'],
-    [/だね$/,       'でございますわね'],
-    [/だ$/,         'でございますわ'],
-    [/じゃん$/,     'ではございませんこと'],
-    [/ね$/,         'ですわね'],
-    [/よ$/,         'ですわよ'],
-    [/かな$/,       'かしら'],
-    [/でしょ$/,     'でございましょう'],
-    [/だろう$/,     'でございましょう'],
-    [/んだ$/,       'のでございますわ'],
-    [/のに$/,       'ですのに'],
-    [/けど$/,       'ですけれど'],
-    [/けど、$/,     'ですけれど、'],
-  ],
-  4: [
-    [/だよ$/,       'でございますわよ'],
-    [/だよね$/,     'でございますわよね'],
-    [/だね$/,       'でございますわね'],
-    [/だ$/,         'でございますわ'],
-    [/じゃん$/,     'ではございませんこと、おほほ'],
-    [/ね$/,         'ですわね'],
-    [/よ$/,         'ですわよ'],
-    [/かな$/,       'かしら、わたくし'],
-    [/でしょ$/,     'でございましょう'],
-    [/だろう$/,     'でございましょう'],
-    [/んだ$/,       'のでございますわ'],
-    [/のに$/,       'ですのに、まあ'],
-    [/けど$/,       'ですけれど'],
-    [/！$/,         'ですわ！'],
-    [/!$/,          'ですわ！'],
-    [/？$/,         'かしら？'],
-    [/\?$/,         'かしら？'],
-  ],
-};
-
-// レベル別追加変換（強化）
-const levelEnhance = {
-  1: (text) => text,
-  2: (text) => text
-    .replace(/ありがとう/g, 'ありがとうございますわ')
-    .replace(/すみません/g, '恐れ入りますわ')
-    .replace(/ごめんなさい/g, '申し訳ございませんわ'),
-  3: (text) => text
-    .replace(/ありがとう/g, 'ありがとうございますわ')
-    .replace(/すみません/g, '恐れ入りますわ')
-    .replace(/ごめんなさい/g, '誠に申し訳ございませんわ')
-    .replace(/そうです/g, 'さようでございます')
-    .replace(/そうですね/g, 'さようでございますわね')
-    .replace(/違います/g, 'さようではございません'),
-  4: (text) => text
-    .replace(/ありがとう/g, 'まあ、ありがとうございますわ')
-    .replace(/すみません/g, '恐れ入りますわ')
-    .replace(/ごめんなさい/g, '誠に申し訳ございませんわ')
-    .replace(/そうです/g, 'さようでございます')
-    .replace(/そうですね/g, 'さようでございますわね')
-    .replace(/違います/g, 'さようではございません')
-    .replace(/まあ/g, 'おほほ、まあ')
-    .replace(/^/, 'ごきげんよう、'),
-};
-
-// ===== 四季の情景フレーズ =====
-const seasonalPhrases = {
-  // 1月：松の内、凜とした静寂、白鳥
-  1: [
-    '睦月の凜とした空気の中、どこか遠くで白鳥の羽ばたく音がするようでございますわ。こんな静かな朝に、このようなお気持ちとは。',
-    '初春の夜はしんと静まり返り、耳をすませばただ風の音ばかり。そんな季節に、このような思いを抱えてしまうとはまあ。',
-    '松の内の澄んだ空に白鳥が弧を描くこの頃、心の内もどこか凜と整えたいものでございますわね。',
-  ],
-  // 2月：梅の香、白鳥の名残、夜の凍てつく静けさ
-  2: [
-    '如月の夜はいまだ深く冷えて、遠くの池では白鳥がひっそりと羽を休めているころでございますわ。このような思いを抱えるのはおひとりではないかしら。',
-    'まだ白梅の香りもほのかなこの頃、夜の静寂に白鳥の声がかすかに届くようで、心まで凍りつくようでございますわ。',
-    '如月の夜風がそっと頬を撫でるこの季節に、胸の中の霧はなかなか晴れてまいりませんわね。',
-  ],
-  // 3月：うぐいすの初音、春霞
-  3: [
-    '弥生の朝、うぐいすがようやく初音を聞かせてくれますのに、心はまだどこか冬の名残でございますわ。',
-    '春霞のやわらかな光の中に、どこからかうぐいすのほうほうという声が届いてまいりますわ。こういった気持ちになるのも、春ゆえのことかもしれませんわね。',
-    '桜のつぼみが膨らみかけ、うぐいすが懸命に声を整えているこの季節に、このような思いを抱えるとは、春も少し意地悪でございますわね。',
-  ],
-  // 4月：うぐいす、春雨の音
-  4: [
-    '卯月の花曇りの朝、うぐいすの澄んだ声がどこか遠く霞んで聞こえますわ。心もそのように、晴れきらない日でございますわね。',
-    '花吹雪がはらはらと舞い、うぐいすがその合間を縫うように鳴いているこの季節に、こんなお気持ちを抱えるとはお辛いことでございますわ。',
-    '春雨がしとしとと石畳を濡らす夜、遠くでうぐいすがまだ鳴き続けておりますわ。そんな宵に、このような思いをひとり抱えてしまうとは。',
-  ],
-  // 5月：ホトトギス、夜の虫の音、薫風
-  5: [
-    '皐月の薫風がこんなにも清々しいというのに、夜になればホトトギスがひと声鳴いて、また静寂が戻ってまいりますわ。そんな夜に、このような思いとは。',
-    '新緑の眩しいこの季節、ホトトギスの声が遠くの山から届くようで、心もどこかへ連れ去られそうでございますわ。',
-    '五月晴れの昼と、虫の音が満ちる夜と。清らかでいたいものですのに、なかなかそうもまいりませんわね。',
-  ],
-  // 6月：梅雨の雨音、かえるの声、夜の湿った静けさ
-  6: [
-    'こんなにも風が心地よく、梅雨の合間の晴れやかな朝でございますのに、まるでお一人だけ別のお天気の中でお過ごしのようですわね。',
-    '紫陽花が雨にしっとりと濡れ、夜になるとかえるの声が遠くから聞こえてまいりますわ。水無月の夜とは、なんとも情感のあるものでございますね。',
-    '梅雨の夜の雨音はこんなにもやさしいというのに、心の中はどこか晴れませんわ。この湿った静けさの中で、そっと気持ちを手放せるといいのですけれど。',
-  ],
-  // 7月：ひぐらし、夜の虫の合唱、遠花火
-  7: [
-    '文月の夕暮れどき、ひぐらしがかなかなと鳴き始めると、一日の終わりを知らせてくれますわ。そんな黄昏に、こういう日もありますのよ。',
-    '夏空がこれほど青く高いというのに、夕暮れになればひぐらしが遠くで鳴き、夜は虫たちの合唱が始まりますわ。心の中はなんと賑やかなことでしょうか。',
-    '七夕の夜、星は雲に隠れておりましても、虫の音だけはこんなにも豊かでございますわ。このような思いを抱えてしまうとは、まあ。',
-  ],
-  // 8月：蝉しぐれ、夜の虫の音、遠い花火
-  8: [
-    '葉月の蝉しぐれがこれほど賑やかなというのに、こういったことはやはりございますわね。夜になれば虫の音がそっと慰めてくれますわ。',
-    '入道雲がもくもくと湧き立つ昼間の賑わいが過ぎると、夜は遠くで花火の音がひとつ、またひとつと聞こえてまいりますわ。そんな夏の夜に、気持ちもどこか立ち上るようでございますわ。',
-    'お盆の夜風がそっと吹き抜け、どこか遠くで打ち上げ花火の音が届いてまいりますわ。こんな夜に、このような思いを誰かに打ち明けたくなりますわよね。',
-  ],
-  // 9月：秋の虫、名月と静寂、雁
-  9: [
-    '長月の夜はこんなにも虫の音が豊かでございますわ。こおろぎたちが奏でる小さな音楽の中で、こういった思いは秋風とともに流れていくといいですわね。',
-    '十五夜のお月さまはこんなにも美しく、虫の音だけが静寂を満たしておりますわ。心の中はまだ夏の名残でございますけれど。',
-    '秋の夜長に雁の声が空を渡っていくのを聞きますと、どこか遠くへ連れていかれるようでございますわ。このようなお気持ちになるのも無理はありませんわ。',
-  ],
-  // 10月：雁の声、夜の風音、紅葉
-  10: [
-    '神無月の澄んだ空を雁が渡っていく声が聞こえますわ。あの潔さを少し分けてほしいくらいでございますわね。',
-    '木々の葉が色づき始め、夜になると風の音ばかりが聞こえてまいりますわ。こういったことを思うのは、それだけ感性が豊かな証でございますわよ。',
-    '秋の夜風がかさかさと落ち葉を転がす音、そして遠くで雁が鳴いているのが聞こえますわ。こんな夜に、このような思いを抱えるとはまあ。',
-  ],
-  // 11月：木枯らし、夜の静寂、白鳥の飛来
-  11: [
-    '霜月の木枯らしがびゅうと吹き抜けていきますわ。遠くの湖には白鳥が戻ってきたころでしょうか。この静けさの中に、自分の気持ちをそっと置いてみてはいかがでしょう。',
-    '晩秋の夜はあまりにも静かで、かえって心がざわめくほどでございますわ。白鳥が北から戻ってくるこの季節、こんなお気持ちになるのはわたくしだけではないかしら。',
-    '木枯らしが梢を揺らす音だけが聞こえる夜、心も少し重くなるのは自然なことでございますわよ。白鳥のように、ただ静かに翼を休めてみてくださいませ。',
-  ],
-  // 12月：除夜の鐘を待つ静けさ、雪の音のなさ
-  12: [
-    '師走の夜はしんと静まり返り、雪でも降ればその音のなさに息をのむほどでございますわ。そんな静寂の中で、このような思いがひそんでいるとは、年の瀬とはそういうものかしら。',
-    '冬の星がひときわ澄んで輝き、除夜の鐘を待つような静けさの中に、このような思いを持つのも人というものでございますわね。',
-    '雪が降るとあたりがこんなにも静かになりますのに、心の中はなんと騒がしいことでしょう。年の瀬のこの頃、どうかご自愛くださいませ。',
-  ],
-};
-
-function getSeasonalPhrase(level) {
-  // レベル1は季節フレーズなし、レベル2以上で追加
-  if (level < 2) return '';
-  const month = new Date().getMonth() + 1;
-  const phrases = seasonalPhrases[month] || seasonalPhrases[6];
-  // レベルが高いほど豊かなフレーズを（インデックスをレベルで選ぶ）
-  const idx = Math.min(level - 2, phrases.length - 1);
-  // 同じレベルの中でも少しランダム性を持たせる
-  const roll = Math.random();
-  const chosen = roll < 0.5 ? phrases[idx] : phrases[Math.floor(Math.random() * phrases.length)];
-  return '\n' + chosen;
-}
-
-function applyConversion(text, level) {
-  let result = text;
-
-  // 一人称変換
-  firstPerson.forEach(([pattern, replacement]) => {
-    result = result.replace(pattern, replacement);
-  });
-
-  // 語彙置換
-  wordMap.forEach(([from, to]) => {
-    result = result.split(from).join(to);
-  });
-
-  // 語尾変換（レベルに応じたルールを適用）
-  const rules = endingRules[level] || endingRules[2];
-  const lines = result.split('\n');
-  const converted = lines.map(line => {
-    let l = line.trim();
-    if (!l) return l;
-    for (const [pattern, replacement] of rules) {
-      if (pattern.test(l)) {
-        l = l.replace(pattern, replacement);
-        break;
-      }
-    }
-    return l;
-  });
-  result = converted.join('\n');
-
-  // レベル別強化
-  result = levelEnhance[level](result);
-
-  // 四季の情景を末尾に添える（レベル2以上）
-  result = result + getSeasonalPhrase(level);
-
-  return result;
-}
-*/
-
 // ===== UI =====
-
 async function convert() {
   const input = document.getElementById('inputText').value.trim();
   if (!input) return;
-
-const isMaintenance = await checkMaintenance();
-
-if (isMaintenance) {
-  showMaintenance();
-  return;
-}
 
   const loading = document.getElementById('loading');
   const output = document.getElementById('output');
@@ -975,16 +603,18 @@ if (isMaintenance) {
   output.classList.remove('visible');
   loading.classList.add('visible');
 
+  const isMaintenance = await checkMaintenance();
+
+  if (isMaintenance) {
+    loading.classList.remove('visible');
+    showMaintenance();
+    return;
+  }
+
   try {
     const result = await applyConversion(input, currentLevel);
 
-sendLog(input, result, currentLevel);
-
-sendLog(
-  input,
-  result,
-  currentLevel
-);
+    sendLog(input, result, currentLevel);
 
     document.getElementById('beforeText').textContent = input;
     document.getElementById('afterText').textContent = result;
@@ -993,7 +623,6 @@ sendLog(
     output.classList.add('visible');
     output.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-    // コピーボタンリセット
     const copyBtn = document.getElementById('copyBtn');
     copyBtn.classList.remove('copied');
     copyBtn.innerHTML = `
@@ -1009,16 +638,10 @@ sendLog(
   }
 }
 
-
 function showMaintenance() {
-  const inputSection =
-    document.querySelector('.input-section');
-
-  const output =
-    document.getElementById('output');
-
-  const loading =
-    document.getElementById('loading');
+  const inputSection = document.querySelector('.input-section');
+  const output = document.getElementById('output');
+  const loading = document.getElementById('loading');
 
   loading.classList.remove('visible');
 
@@ -1077,6 +700,7 @@ function showMaintenance() {
 
 function copyResult() {
   const text = document.getElementById('afterText').textContent;
+
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.getElementById('copyBtn');
     btn.classList.add('copied');
@@ -1086,6 +710,7 @@ function copyResult() {
       </svg>
       コピーいたしましたわ
     `;
+
     setTimeout(() => {
       btn.classList.remove('copied');
       btn.innerHTML = `
