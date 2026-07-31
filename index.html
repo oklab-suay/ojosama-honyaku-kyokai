@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>お嬢様言葉翻訳協会</title>
+<meta name="description" content="お嬢様 言葉への変換なら、お嬢様翻訳協会。怒りや愚痴を、ワンクリックでお嬢様言葉に変換する無料ツールです。変換結果はカード画像として保存やX投稿もできます。">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Noto+Serif+JP:wght@300;400;500&display=swap');
 
@@ -824,7 +825,7 @@ async function saveCard() {
 // ===== Xへ報告する =====
 function shareOnX() {
   const afterText = document.getElementById('afterText').textContent;
-  const tweetText = `わたくし、こう申し上げましたわ。\n\n「${afterText}」\n\n#お嬢様翻訳協会`;
+  const tweetText = `わたくし、こう申し上げましたわ。\n\n「${afterText}」\n\n#お嬢様翻訳協会\nhttps://sparkling-speculoos-181953.netlify.app`;
   const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
   window.open(url, '_blank', 'noopener,noreferrer');
 }
