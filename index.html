@@ -825,7 +825,7 @@ async function saveCard() {
 // ===== Xへ報告する =====
 function shareOnX() {
   const afterText = document.getElementById('afterText').textContent;
-  const tweetText = `わたくし、こう申し上げましたわ。\n\n「${afterText}」\n\n#お嬢様翻訳協会\nhttps://sparkling-speculoos-181953.netlify.app`;
+  const tweetText = `わたくし、こう申し上げましたわ。\n${afterText}\n#お嬢様翻訳協会\nhttps://x.gd/l49Zt`;
   const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
   window.open(url, '_blank', 'noopener,noreferrer');
 }
